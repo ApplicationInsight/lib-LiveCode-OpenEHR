@@ -1,7 +1,6 @@
 # lib-LiveCode-OpenEHR
-dev tools for LiveCode developers wanting to work with OpenEHR
 
-This Repository is for LiveCode developers wanting to connect with libEHR
+This Repo contains dev tools for people using LiveCode wishing to connect with libEHR - and is a collaboration between [FreshEHR's Ian McNicoll](https://github.com/freshehr) and Dave Kilroy
 
 It contains three main elements
 
