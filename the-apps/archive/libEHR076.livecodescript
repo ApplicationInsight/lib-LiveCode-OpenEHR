@@ -1,6 +1,6 @@
 ﻿script "libEHR"
 constant callingStack = "TestLibEHR"
-constant libEHRversion = 0.7.7
+constant libEHRversion = 0.7.6
 Local sSessionID
 
 function ehr.version
@@ -17,26 +17,17 @@ libEHR
 
 
 Release Date:
-17-04-2017
+09-04-2017
 
 
 
 Release History:
-
-0.7.7 - 17-04-17
-
-Slight change to ehr.login() function to allow for a simpler process when testing DiADeM data
-
-
 
 0.7.6 - 09-04-2017
 
 Changes in how templateIds are stored and displayed
 Removed need to get a template's web template document
 Changes in what metadata metadata is stored and subsequently used 
-Changes in how composition data is reported (extraction of composer|name
-May add in an API call to get composition name...
-
 
 
 0.7.5 - 06-04-2017
@@ -104,42 +95,40 @@ end __LOGIN_AND_SESSIONS__
 
 --
 function ehr.login pUserName, pPassword
-   put the ehr["rootURL"] of stack ehr.mainStack() into tURL
-   --
-   put empty into sSessionID -- initilizes session id variable
-   put empty into tArgs -- want to post an empty body
-   put tURL & "/rest/v1/session?username=" & pUsername & "&password=" & pPassword into tURL
-   --
-   post tArgs to tURL
-   put it into tJson
-   put the result into tResult
-   --
-   if ehr.mainStack() = "testLibEHR" then
-      if the short name of the current card of stack "testLibEHR" = "cdLogin" then
-         if mobile() then put checkResponseFromServer( tJson, "mobile", urlresponse) into fld "lblSessionResults"
-         else put checkResponseFromServer( tJson, libURLLastRHHeaders(), urlresponse) into fld "lblSessionResults"
-      end if
-   end if
-   --
-   if tResult is empty then
-      put JsonImport(tJson) into tArray
-      --
-      -- check that a sessionId has been returned
-      if "sessionId" is among the keys of tArray then
-         put tArray["sessionId"] into tSessionID
-         put tSessionID into sSessionID
-         set the ehr["sessionId"] of stack ehr.mainStack() to tSessionID
-         set the ehr["sessionStatus"] of stack ehr.mainStack() to "CONNECTED"
-         set the ehr["ehrid"] of stack ehr.mainStack() to empty
-         return tSessionID -- successful
-      else
-         return "Error1:" && tJson -- not successful
-      end if
-   else
-      if word 1 of tResult <> "error" then put "Error: " before tResult
-      if char 1 of tResult = "e" then put "E" into char 1 of tResult
-      return tResult -- not successful (bad URL, bad login credentials)
-   end if
+     put the ehr["rootURL"] of stack ehr.mainStack() into tURL
+     --
+     put empty into sSessionID -- initilizes session id variable
+     put empty into tArgs -- want to post an empty body
+     put tURL & "/rest/v1/session?username=" & pUsername & "&password=" & pPassword into tURL
+     --
+     post tArgs to tURL
+     put it into tJson
+     put the result into tResult
+     --
+     if ehr.mainStack() = "testLibEHR" then
+          if mobile() then put checkResponseFromServer( tJson, "mobile", urlresponse) into fld "lblSessionResults"
+          else put checkResponseFromServer( tJson, libURLLastRHHeaders(), urlresponse) into fld "lblSessionResults"
+     end if
+     --
+     if tResult is empty then
+          put JsonImport(tJson) into tArray
+          --
+          -- check that a sessionId has been returned
+          if "sessionId" is among the keys of tArray then
+               put tArray["sessionId"] into tSessionID
+               put tSessionID into sSessionID
+               set the ehr["sessionId"] of stack ehr.mainStack() to tSessionID
+               set the ehr["sessionStatus"] of stack ehr.mainStack() to "CONNECTED"
+               set the ehr["ehrid"] of stack ehr.mainStack() to empty
+               return tSessionID -- successful
+          else
+               return "Error1:" && tJson -- not successful
+          end if
+     else
+          if word 1 of tResult <> "error" then put "Error: " before tResult
+          if char 1 of tResult = "e" then put "E" into char 1 of tResult
+          return tResult -- not successful (bad URL, bad login credentials)
+     end if
 end ehr.login
 
 
@@ -266,7 +255,7 @@ function ehr.getTemplateIds
           repeat for each key tKey in tArray
                if tKey = "templates" then
                     repeat with i = 1 to the number of lines in the keys of tArray["templates"]
-                         put tArray["templates"][i]["templateId"] & tab & "metaDataHolder" & cr after tList
+                         put tArray["templates"][i]["templateId"] & tab & "nodeId" & tab & "compositionName" & cr after tList
                     end repeat
                     delete char -1 of tList
                     sort lines of tList
@@ -335,7 +324,6 @@ function ehr.getTemplateExampleData pTemplateId
      --
      get url tURL
      put it into tJson
-     
      set the ehr["templateExampleData"] of stack ehr.mainStack() to tJson
      --
      if ehr.mainStack() = "testLibEHR" then
@@ -441,9 +429,7 @@ function ehr.getCompData pCompId,pCompName
    put tURL & "/rest/v1/composition/" & pCompId & tArg1 into tURL
    --
    get url tURL
-   put the urlresponse into tResponse
    put it into tJson
-   --answer tResponse
    --
    if ehr.mainStack() = "testLibEHR" then
       if mobile() then put checkResponseFromServer( tJson, "mobile", urlresponse) into fld "lblCompDataResults"
@@ -458,15 +444,10 @@ function ehr.getCompData pCompId,pCompName
          put tName & cr & cr & the keys of tArray["composition"] into tCompDataReceived
          --
          put the number of lines in the keys of tArray["composition"] into tNumOfKeys
-         --
-         repeat for each line tLine in the keys of tArray["composition"]
-            if tLine contains "/composer|name" then 
-               put tLine into tKey
-               exit repeat
-            end if
-         end repeat
-         put tArray["composition"][tKey] into tName
-         
+         put toLower(pCompName) into tCompName
+         replace space with "_" in tCompName
+         put "/composer|name" after tCompName
+         put tArray["composition"][tCompName] into tName
          return tNumOfKeys && "elements of data received. The composer was" && tName
       else
          return "Error: Unable to find valid Composition data" -- unexpected data returned from server
